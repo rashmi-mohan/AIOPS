@@ -1,0 +1,11 @@
+CPU,Memory,Anomaly,Status
+40.0,45.0,1,Normal
+45.0,48.0,1,Normal
+50.0,50.0,1,Normal
+48.0,52.0,1,Normal
+52.0,49.0,1,Normal
+55.0,51.0,1,Normal
+51.0,53.0,1,Normal
+49.0,50.0,1,Normal
+47.0,48.0,1,Normal
+53.96587171052632,408236032.0,-1,Anomaly
