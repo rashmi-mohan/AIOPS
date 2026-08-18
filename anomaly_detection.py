@@ -15,7 +15,7 @@ def get_metric(query):
     return float(values[0]["value"][1])
 
 cpu_query = '100 - (avg(rate(windows_cpu_time_total{mode="idle"}[5m])) * 100)'
-memory_query = 100 * ( 1 - ( windows_memory_available_bytes /windows_memory_physical_total_bytes )
+memory_query = 100 * ( 1 - ( windows_memory_available_bytes /windows_memory_physical_total_bytes ))
 cpu = get_metric(cpu_query)
 memory = get_metric(memory_query)
 print("CPU Usage    :", round(cpu, 2), "%")
