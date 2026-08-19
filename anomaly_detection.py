@@ -54,11 +54,8 @@ memory_query = (
 
 print("Getting CPU history...")
 
-cpu_data = get_historical_metric(cpu_query, hours=1)
-
-print("Getting Memory history...")
-
-memory_data = get_historical_metric(memory_query, hours=1)
+cpu_data = get_historical_metric(cpu_query, hours=24)
+memory_data = get_historical_metric(memory_query, hours=24))
 
 
 data = pd.DataFrame({
