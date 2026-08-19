@@ -7,6 +7,7 @@ PROMETHEUS_URL = "http://localhost:9090"
 
 
 def get_historical_metric(query, hours=1):
+
     end_time = datetime.now()
     start_time = end_time - timedelta(hours=hours)
 
@@ -27,9 +28,10 @@ def get_historical_metric(query, hours=1):
 
     if not result:
         raise RuntimeError(
-            "No historical data returned from Prometheus."
+            "No data returned from Prometheus."
         )
 
+    # Take the first returned time series
     values = result[0]["values"]
 
     data = []
@@ -43,34 +45,91 @@ def get_historical_metric(query, hours=1):
     return pd.DataFrame(data)
 
 
-cpu_query = '100 - (avg(rate(windows_cpu_time_total{mode="idle"}[5m])) * 100)'
+# ---------------------------------------------------
+# PROMETHEUS QUERIES
+# ---------------------------------------------------
 
-memory_query = (
-    '100 * (1 - '
-    '(windows_memory_available_bytes / windows_memory_physical_total_bytes)'
-    ')'
+cpu_query = '''
+100 - (
+    avg(
+        rate(
+            windows_cpu_time_total{mode="idle"}[5m]
+        )
+    ) * 100
+)
+'''
+
+memory_query = '''
+100 * (
+    1 -
+    (
+        windows_memory_available_bytes
+        /
+        windows_memory_physical_total_bytes
+    )
+)
+'''
+
+
+# ---------------------------------------------------
+# GET HISTORICAL DATA
+# ---------------------------------------------------
+
+print("Getting CPU data...")
+
+cpu_data = get_historical_metric(
+    cpu_query,
+    hours=1
+)
+
+print("Getting Memory data...")
+
+memory_data = get_historical_metric(
+    memory_query,
+    hours=1
 )
 
 
-print("Getting CPU history...")
+# ---------------------------------------------------
+# RENAME COLUMNS
+# ---------------------------------------------------
 
-cpu_data = get_historical_metric(cpu_query, hours=24)
-memory_data = get_historical_metric(memory_query, hours=24)
+cpu_data = cpu_data.rename(
+    columns={"Value": "CPU"}
+)
+
+memory_data = memory_data.rename(
+    columns={"Value": "Memory"}
+)
 
 
-data = pd.DataFrame({
-    "Timestamp": cpu_data["Timestamp"],
-    "CPU": cpu_data["Value"],
-    "Memory": memory_data["Value"]
-})
+# ---------------------------------------------------
+# MERGE USING TIMESTAMP
+# ---------------------------------------------------
+
+data = pd.merge(
+    cpu_data,
+    memory_data,
+    on="Timestamp",
+    how="inner"
+)
 
 
-print("\nHistorical Data:")
-print(data)
+# ---------------------------------------------------
+# REMOVE MISSING VALUES
+# ---------------------------------------------------
 
+data = data.dropna(
+    subset=["CPU", "Memory"]
+)
+
+
+# ---------------------------------------------------
+# ISOLATION FOREST
+# ---------------------------------------------------
 
 model = IsolationForest(
-    contamination=0.1,
+    contamination=0.05,
     random_state=42
 )
 
@@ -80,15 +139,28 @@ data["Anomaly"] = model.fit_predict(
 )
 
 
+# ---------------------------------------------------
+# STATUS
+# ---------------------------------------------------
+
 data["Status"] = data["Anomaly"].map({
     1: "Normal",
     -1: "Anomaly"
 })
 
 
-print("\nAnomaly Detection Result:")
-print(data)
+# ---------------------------------------------------
+# DISPLAY RESULT
+# ---------------------------------------------------
 
+print("\nAnomaly Detection Result:")
+
+print(data.to_string(index=False))
+
+
+# ---------------------------------------------------
+# SAVE REPORT
+# ---------------------------------------------------
 
 data.to_csv(
     "anomaly_report.csv",
@@ -96,9 +168,15 @@ data.to_csv(
 )
 
 
-print("\nReport generated: anomaly_report.csv")
+# ---------------------------------------------------
+# CURRENT STATUS
+# ---------------------------------------------------
 
 print(
-    "Current System Status:",
+    "\nCurrent System Status:",
     data.iloc[-1]["Status"]
+)
+
+print(
+    "\nReport generated: anomaly_report.csv"
 )
